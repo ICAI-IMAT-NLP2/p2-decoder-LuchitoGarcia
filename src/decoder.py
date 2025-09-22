@@ -44,14 +44,18 @@ class AttentionHead(nn.Module):
             Tensor: Attention weights.
         """
         # TODO: Implement the scaled dot-product attention mechanism, now with masking.
-        output, weights = None, None
         d_k = k.size(-1)
-        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)   # (B, T, T)
+
+        # Paso 1: softmax normal
+        weights = F.softmax(scores, dim=-1)                              # (B, T, T)
+
         if mask is not None:
-            scores = scores.masked_fill(mask == 0, float('-inf'))
-        weights = F.softmax(scores, dim=-1)
-        output = torch.matmul(weights, v)
-        
+            weights = weights * mask
+            weights = weights / (weights.sum(dim=-1, keepdim=True) + 1e-9)  # Re-normalize
+            
+        output = torch.matmul(weights, v)                                # (B, T, d_v)
+
         return output, weights
 
     def forward(self, x, mask=None):
